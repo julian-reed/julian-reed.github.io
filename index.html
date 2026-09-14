@@ -1,85 +1,52 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
   <head>
-    <link rel="stylesheet" href="style.css" type="text/css" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="The personal website of Julian Reed — Inference, MLSys, and AI Research" />
+    <title>Julian Reed — Inference, MLSys and AI Research</title>
+    <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body class="body">
-    <div class="vertical_container">
-      <div class="header">
-        <a href="https://julian-reed.github.io/">
-          <img
-            src="Images/PersonalLogo.jpg"
-            alt="Julian Reed's Personal Logo, links to home page"
-            class="Logo_Header"
-          />
-        </a>
-        <h2 class="intro_blurb">Julian Reed. Student. Developer. More.</h2>
+  <body>
+    <header class="site-header shell">
+      <a class="wordmark" href="/">Julian Reed</a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="/writing.html">Writing</a>
+        <a href="/projects.html">Projects</a>
+        <a href="/research.html">Research</a>
+      </nav>
+    </header>
+
+    <main class="home shell">
+      <figure class="home-image">
+        <img src="/gas_edward_hopper.png" alt="Gas by Edward Hopper" />
+      </figure>
+
+    <section class="home-copy" aria-labelledby="intro-title">
+      <p id="intro-title">
+        Hi, I'm Julian. I'm a CS student at 
+        <a href="https://cs.stanford.edu" target="_blank" rel="noopener noreferrer">Stanford</a> 
+        (BS '27, MS '28). For my master's degree and my work as a research assistant at the 
+        <a href="https://scalingintelligence.stanford.edu" target="_blank" rel="noopener noreferrer">Scaling Intelligence Lab</a>, 
+        I'm fortunate to be advised by 
+        <a href="https://www.azaliamirhoseini.com/" target="_blank" rel="noopener noreferrer">Prof. Azalia Mirhoseini</a>. 
+      </p>
+      <p>
+        My work primarily centers on inference and ML systems. Most recently, I completed my second internship at 
+        <a href="https://www.nvidia.com" target="_blank" rel="noopener noreferrer">NVIDIA</a> optimizing inference with multithreaded PyTorch and
+        CUDA Graphs, and my second internship at 
+        <a href="https://www.duolingo.com" target="_blank" rel="noopener noreferrer">Duolingo</a> 
+        making content generation safer and more scalable with the Content Infrastructure team. 
+      </p>
+    </section>
+    </main>
+
+    <footer class="site-footer shell">
+      <div class="social-links" aria-label="Social links">
+        <a href="mailto:julianreedpro@gmail.com" aria-label="Email Julian Reed"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></a>
+        <a href="https://www.linkedin.com/in/juliantreed/" aria-label="LinkedIn profile"><svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M5.2 8.1H2.1V21h3.1V8.1ZM3.65 3A1.85 1.85 0 1 0 3.65 6.7 1.85 1.85 0 0 0 3.65 3ZM21.9 13.6c0-3.88-2.07-5.69-4.83-5.69-2.23 0-3.22 1.23-3.78 2.09V8.1h-3.1V21h3.1v-6.39c0-1.68.32-3.31 2.4-3.31 2.05 0 2.08 1.93 2.08 3.42V21h3.1v-7.4Z"/></svg></a>
+        <a href="https://github.com/julian-reed" aria-label="GitHub profile"><svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5a9.5 9.5 0 0 0-3 18.51c.48.09.65-.21.65-.46v-1.67c-2.64.58-3.2-1.12-3.2-1.12-.43-1.1-1.05-1.4-1.05-1.4-.86-.59.07-.58.07-.58.95.07 1.45.98 1.45.98.85 1.45 2.23 1.03 2.78.79.09-.62.33-1.03.6-1.27-2.11-.24-4.33-1.05-4.33-4.7 0-1.04.37-1.88.98-2.54-.1-.24-.42-1.2.09-2.5 0 0 .8-.26 2.62.97a9.1 9.1 0 0 1 4.77 0c1.82-1.23 2.62-.97 2.62-.97.51 1.3.19 2.26.09 2.5.34.3.64.87.64 1.76v2.61c0 .25.17.55.66.46A9.5 9.5 0 0 0 12 2.5Z"/></svg></a>
       </div>
-      <hr class="hr" />
-      <div class="main">
-        <div class="top_row">
-          <div class="about_me">
-            <a href="https://julian-reed.github.io/aboutme.html">
-              <h1 class="text_about_me">About Me</h1>
-            </a>
-          </div>
-          <hr class="vr" />
-          <div class="projects">
-            <a href="https://julian-reed.github.io/projects.html">
-              <h1 class="text_projects">Projects</h1>
-            </a>
-          </div>
-        </div>
-        <hr class="hr" />
-        <div class="bottom_row">
-          <!--The link below leads to the "activities" page of my website, which describes
-              the activities I have participated in-->
-          <div class="activities">
-            <!--This link makes the entire "activities" box a big button, that leades to the
-                "activities" page when clicked-->
-            <a href="https://julian-reed.github.io/activities.html">
-              <h1 class="text_activities">Activities</h1>
-            </a>
-          </div>
-          <!--Adds a vertical split between the "activities" and "certifications" boxes-->
-          <hr class="vr" />
-          <!--The link below leads to the "certifications" page of my website, which describes
-              the certifications I have earned-->
-          <div class="certifications">
-            <!--Just as above, this link makes the entire "certifications" box a big button, 
-                that leades to the "certifications" page when clicked-->
-            <a href="https://julian-reed.github.io/certifications.html">
-              <h1 class="text_certifications">Certifications</h1>
-            </a>
-          </div>
-        </div>
-      </div>
-      <hr class="hr" />
-      <div class="footer">
-        <div class="media">
-          <a href="https://github.com/julian-reed">
-            <img
-              src="Images/GithubLogo.jpg"
-              alt="Take a look at my GitHub Page!"
-              class="github_logo"
-            />
-          </a>
-          <a href="https://www.linkedin.com/in/julian-reed-1a3b081b2/">
-            <img
-              src="Images/LinkedInLogo.png"
-              alt="Check out my LinkedIn Profile!"
-              class="linkedIn_logo"
-            />
-          </a>
-          <a href="mailto: julianreedpro@gmail.com">
-            <img
-              src="Images/EmailIcon.jpg"
-              alt="Send me an email!"
-              class="email_icon"
-            />
-          </a>
-        </div>
-      </div>
-    </div>
+    </footer>
   </body>
 </html>
