@@ -66,6 +66,8 @@ h1 { font-size:clamp(29.21875px, 4.296875vw, 44.6875px); margin:0; }
 .image-modal-close { position:absolute; top:18px; right:24px; color:var(--ink); border:0; background:transparent; font:inherit; font-size:40px; line-height:1; cursor:pointer; }
 body.modal-open { overflow:hidden; }
 .entry h2 { font-size:17.1875px; line-height:1.25; margin:0 0 9px; }
+.entry-title-link { text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:4px; }
+.entry-title-link:hover { color:var(--accent); }
 .entry p { color:#aebed2; max-width:520px; margin:0; line-height:1.7; font-size:12.890625px; }
 .entry-meta { color:var(--muted); font-size:10.3125px; margin-top:12px; }
 .entry-meta a + a { margin-left:4ch; }
@@ -78,4 +80,14 @@ body.modal-open { overflow:hidden; }
 .research-page .entry-code { order:4; margin-top:12px; margin-bottom:0; font-size:10.3125px; }
 .research-page .entry-meta b { font-weight:800; }
 .research-page .entry p { order:3; }
+.article { padding-top:53px; padding-bottom:78px; }
+.article article { max-width:100%; }
+.article-kicker { color:#7b8496; font-size:11px; font-weight:500; letter-spacing:.18em; }
+.article h1 { color:#e7edf5; font-size:35.1875px; line-height:1.12; margin:24.5px 0 42px; }
+.article-dek { color:#9da9ba; font-size:16.6875px; line-height:1.48; letter-spacing:-.025em; max-width:100%; margin:0; }
+.article-rule { border-top:1px solid rgb(231 237 245 / 32%); margin:55px 0; }
+.article-body { max-width:100%; color:#c4cfdd; font-size:16.6875px; line-height:1.5; letter-spacing:0; }
+.article-body p { margin:0 0 28px; }
+.article-body p:last-child { margin-bottom:0; }
+@media (max-width:700px) { .article { padding-top:38px; padding-bottom:58px; } .article h1 { margin:24.5px 0 30px; } .article-rule { margin:42px 0 54px; } }
 @media (max-width:700px) { .shell { width:min(100% - 45px, 1024px); } .site-header { align-items:flex-start; gap:22px; } .wordmark, .site-nav { font-size:17.1875px; } .site-nav { gap:18px; flex-wrap:wrap; justify-content:flex-end; } .home { padding-top:36px; padding-bottom:45px; } .home-copy { padding-top:38px; font-size:15.125px; } .page-intro::before { font-size:15.125px; } .home-copy p { margin-bottom:38px; } .site-footer { margin-top:20px; } .page { padding-top:36px; padding-bottom:58.5px; } .page-intro { grid-template-columns:1fr; gap:12px; padding-bottom:42px; } .intro-copy { margin-top:10px; } .entry { grid-template-columns:1fr; gap:8px; } .projects-page .entry-image { width:150px; } .projects-page .logo-image { width:75px; height:75px; } .projects-page .mamba-image { width:112.5px; height:112.5px; } .research-page .entry { grid-template-columns:1fr; gap:14px; } .research-page .entry-year { width:100%; height:180px; } }
