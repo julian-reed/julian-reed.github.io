@@ -20,15 +20,147 @@
 </nav>
 </header>
 <main class="article shell">
+<div class="article-layout">
+<aside class="article-toc" aria-label="Article sections">
+<nav>
+<a href="#point">What’s The Point?</a>
+<a href="#step-0">Step 0: Implementing Llama</a>
+<a href="#step-1">Step 1: Serving a Single Prompt + Architecture Design</a>
+<a href="#step-2">Step 2: KV Caching</a>
+<a href="#step-3">Step 3: Static Batching</a>
+<a href="#step-4">Step 4: Continuous Batching + PagedAttention</a>
+<a href="#step-5">Step 5: Porting to GPU + Benchmarking</a>
+</nav>
+</aside>
 <article>
 <div class="article-kicker">PROJECTS EXPLAINED</div>
-<h1>JInfer: My Own Inference Engine</h1>
+<h1>JInfer: An Instructional Inference Engine</h1>
 <p class="article-dek">A hand-crafted inference engine built for learning.</p>
 <div class="article-rule"></div>
 <div class="article-body">
-<p>Writeup coming soon :)</p>
+<h2>Table of Contents</h2>
+<nav class="article-toc-main" aria-label="Article table of contents">
+<p class="article-source-note"><em>Check out the source code <a href="https://github.com/julian-reed/JInfer">here</a>!</em></p>
+<ul>
+<li><a href="#point">What’s The Point?</a>: Why spend my time building this?</li>
+</ul>
+<ul>
+<li><a href="#step-0">Step 0: Implementing Llama</a>: Writing a custom Llama 3.1 implementation in PyTorch, why I chose to do that, and the process of gaining numerical equivalence with HuggingFace’s implementation</li>
+</ul>
+<ul>
+<li><a href="#step-1">Step 1: Serving a Single Prompt + Architecture Design</a>: How I designed by serving architecture, sampling and timing one served request E2E</li>
+</ul>
+<ul>
+<li><a href="#step-2">Step 2: KV Caching</a>: Implementing the foundational optimization</li>
+</ul>
+<ul>
+<li><a href="#step-3">Step 3: Static Batching</a>: Basic steps to increase throughput, and masking + padding snags</li>
+</ul>
+<ul>
+<li><a href="#step-4">Step 4: Continuous Batching + PagedAttention</a>: Fundamental engine redesign and efforts to improve both throughout and memory efficiency</li>
+</ul>
+<ul>
+<li><a href="#step-5">Step 5: Porting to GPU + Benchmarking</a>: Coming soon:)</li>
+</ul>
+</nav>
+<h2 id="point">What’s The Point?</h2>
+<p>To answer this question, I will propose another: What is the best way to learn inference engineering? This was the question I asked myself a few months ago when thinking about what to work on next. Inference has always been on my mind since my first internship, and as I thought about the many ways we were making extensive use of AI at Duolingo, inference emerged as the fundamental component upon which AI will change the future of our world.</p>
+<p>I could continue about my worldview, but that’s for another post. I’m a big fan of reasoning through problems from first principles, so to begin my inference engineering journey, I read the canonical papers in hopes of understanding how the bottlenecks and priorities of the field have changed over time, and what patterns are still applicable today. Once I finished reading, I was pretty sure I understood most of them. However, as the wonderful <a href="https://web.stanford.edu/~engler/">Dawson Engler</a> loves to preach, you never fully understand something unless you can implement it yourself. So, I decided to build <a href="https://github.com/julian-reed/JInfer">my own inference engine</a>.</p>
+<p>Before I get into details, a few notes about my development process:</p>
+<ol>
+<li>Every line of this repo was written myself, by hand (with the exception of RoPE). This made iteration loops much slower, but allowed me the great satisfaction of proving that I knew what I thought I knew. For anyone who is building a project for learning purposes (as opposed to pushing SOTA), I’d highly recommend the same approach:)</li>
+<li>The uploaded repo has one commit per step. I’ve linked each step in each corresponding section of the post for anyone who would like to see the step-by-step evolution. In keeping with the spirit of learning, I’m using the cutoffs I intended when first working through everything, even though some “complete” steps contain bugs that I overlooked until later on.</li>
+<li>Around halfway through my work on step one, after a few trips through the loop of coming up with what I thought was perfect, spending a while implementing it, then realizing my underlying idea was wrong and reverting to what I had originally, I adopted the following principle: design and implement a minimum working version, and expand only when the basic goal has been achieved. This is the only logical approach: I set the goal of this project to be learning because I don’t know very much about the problems I’ll run into, how to solve them, nor the factors that would allow me to make well-informed decisions. Thus, expecting myself to come up with a right solution without putting anything into practice is a pretty long shot.</li>
+</ol>
+<h2 id="step-0"><a href="https://github.com/julian-reed/Jinfer/tree/3e228834490819e3a0689a6d8cd0fa472a2a0fa5">Step 0: Implementing Llama</a></h2>
+<p class="article-note"><strong>Note:</strong> The repo has one commit per step. I’ve linked each step in each corresponding section of the post for anyone who would like to see the step-by-step evolution. In keeping with the spirit of learning, I’m using the cutoffs I intended when first working through everything, even though some “complete” steps contain bugs that I overlooked until later on.</p>
+<p>As cool as zero-indexing is, I wasn’t planning on making it a part of this blog post. My original plan was to load a model and its weights from huggingface, copy that entire config, then worry about the execution side of things later. This quickly changed when I realized that if I just imported the model, I would have no way of utilizing the KV cache<sup>1</sup>. Thus, I quickly pivoted to my own implementation of an arbitrary transformer. The architecture I landed on was Llama, due to its structural similarity to the transformer architecture presented in <em>Attention is All You Need</em> (just adding pre RMSNorm, RoPE and GQA), and open availability of small models that I could run locally on my 16GB M1 Macbook Pro.</p>
+<p>Implementing Llama’s architecture went fairly smoothly, since before this project, I had done a quick exercise of implementing a transformer as described in <em>Attention is All You Need</em> from scratch (without PyTorch). That being said, there were a few differences between implementing the structure in PyTorch versus vanilla Python that I found pretty neat:</p>
+<ul>
+<li><code>nn.embedding</code> as a lookup table. In my implementation, I maintained an embedding matrix, which I matmuled against a one-hot encoded vector coming from my tokenizer. When investigating the difference between <code>nn.linear</code> and <code>nn.embedding</code>, I saw that <code>nn.embedding</code> was a lookup table which improves perf without any drawbacks (this also explains why the huggingface tokenizer returns a single int for each token instead of a vector, which I was originally confused by).</li>
+</ul>
+<ul>
+<li>Structure of a linear layer. When you create a <code>nn.linear</code>, you pass [<code>in_features</code>, <code>out_features</code>] but the shape internally is [<code>out_features</code>, <code>in_features</code>]. This is done because each row (and thus the weights for each neuron) are contiguous in memory, making neuron-level ops faster. However, this means internally the calculation for <code>linear(x)</code> is <code>xW<sup>t</sup></code> instead of <code>xW</code>.</li>
+</ul>
+<p>The biggest issue I had with implementation is what I’m calling “output drift”: where the logits from my implementation would vary slightly (0.2 mean difference between the sum of my logits and theirs) from the HF version. To debug this, I printed the output of each subsection of each layer of my model. The outputs only began diverging during the attention calculation (and didn’t diverge further after the FFN), so I deduced that this was mostly due to how the kernels for the HF model are implemented. I was able to get this mean difference closer to 0.1 once I found the <a href="https://github.com/huggingface/transformers/blob/main/src/transformers/models/llama/modeling_llama.py">llama HF implementation</a>, which was pretty much identical aside from casting differences (doing everything in bf16 besides softmax in fp32, while I was doing everything including softmax in bf16 originally).</p>
+<p>Though I mainly began implementing the architecture structure in the next step, at this phase I added a description of the three principal components of the server:</p>
+<ul>
+<li>API server: handles incoming requests, formats them as structured objects and passes these objects to the engine</li>
+</ul>
+<ul>
+<li>Engine: Does the bulk of non-execution related work, such as KV-cache management and scheduling</li>
+</ul>
+<ul>
+<li>Exec: Handles actual execution of forward passes through the model.</li>
+</ul>
+<p class="article-footnote"><sup>1</sup> The idea that I could just import a model and still implement KV caching was the first in a long series of grossly uninformed decisions I made, which I had to go back and resolve later. At first, I was pretty upset with myself for making, in retrospect, simple oversights. As my work progressed, I came to see them as evidence of how much I was learning and that is part of why I’ve come to enjoy this project so much. Plus, it gives me things to write about.</p>
+<h2 id="step-1"><a href="https://github.com/julian-reed/Jinfer/tree/7625621de304f758a00c115321b154985241f213">Step 1: Serving a Single Prompt + Architecture Design</a></h2>
+<p>With the model implemented, the next logical step is to actually run the model to serve a prompt. Specifically, I wanted to build the simplest possible generation loop for one request on one GPU: tokenizing a prompt, running prefill, then autoregressive decode thereafter. This meant that, unlike most of the other steps, step 1 was more about design than the code I was writing. The plan was as follows:</p>
+<p><code>Server()</code> is the main entry point. It initializes an engine (which in turn initializes a single worker), and sets the device/other metadata like benchmarking level. Clients call <code>server.generate()</code> with their prompt and desired sampling parameters, and get back the result of a future with the entire output. This future allows the caller to return immediately, so that you can actually submit more than one prompt at once. The engine handles scheduling (since this step is just serving a single prompt, the engine schedules the request as soon as it is submitted), and contains <code>execute()</code> which sends the active batch to the executor while the request is unfinished. The executor runs a forward pass of the model on the given batch, applies the sampling parameters for that request, and updates the request’s status, tokens and text.</p>
+<p>Originally, I was planning for the worker to take one request at a time and that this request would be the batch. However, this diverges from the natural idea of a request (meaning I should have to maintain the client/server's idea of a request alongside the executor’s). As a result, I kept the intuitive meaning of a request and added engine functionality to assign multiple requests to a worker (moving the question of which requests to run from the worker to the engine).</p>
+<p>This step also required me to implement some of the traditional sampling techniques, such as temperature, <code>top_k</code>, <code>top_p</code> and <code>min_p</code>. Though each was only a few lines of code, it took me a bit to understand how each was meant to affect the probabilities of the logits and how to do so efficiently. This actually led me down a slight rabbit hole about efficient sampling (special shoutout to the FlashInfer team for their article on <a href="https://flashinfer.ai/2025/03/10/sampling.html">efficient sampling</a> which taught me a lot), since the entire process of iterating over the logits multiple times (at least two passes to one type of sampling parameter, then to sample from the resulting probabilities) seemed inefficient. Since I switched to the instruct model halfway through this step (I was getting stories after asking a simple question like “who is in the Duolingo suit” and couldn’t figure out why), I was originally interested in repetition penalties but decided it was low priority.</p>
+<p>After getting a single prompt working, I wanted to track TTFT and ITL to understand at a basic level how things were performing (and partially in preparation for the next step, where the time between tokens should grow at a much slower rate than without the cache). However, it seemed to me that you could pick any point along the execution process to record how long it took to generate a single token (ex. when you finish the forward pass, when you finish applying the sampling parameters to actually get a token, when the engine receives the token from the executor, etc.). Out of these options, it seemed the most reasonable (as well as the most conventional after a quick search) to set these values as the client observes them - meaning I needed to implement streaming.</p>
+<p>I derived my streaming implementation from first principles:</p>
+<ul>
+<li>Returning the stream needs to be async, so can replace the future.result (which is already async) with an object that allows for both a token-by-token stream and the final result</li>
+</ul>
+<ul>
+<li>We don’t want the caller to have to manage the stream, this needs to happen inside the engine. Thus, generate should be an async function and we can do an ‘async for’ over the streamer to “stream out” the tokens</li>
+</ul>
+<ul>
+<li>The engine has all the necessary information already, it is just being disregarded. Plug this info (each generated <code>token_id</code> and token, request status, etc.) into the streamer as well</li>
+</ul>
+<p>Interestingly, my solution is fairly similar to how vLLM handles streaming, with the biggest difference being that vLLM returns a structured <code>RequestOutput</code>. At this stage, none of the additional information contained in a vLLM RequestOutput is necessary here, and in Step 5 I actually ended up implementing a response object to address similar concerns. Another win for first-principles thinking if you ask me.</p>
+<p>After implementing streaming with the async paradigm, I thought I had mistakenly failed to make the engine’s <code>execute_batch()</code> async as well (meaning that you could call it on the worker, while remaining unblocked to handle more requests, start scheduling, etc.). After a bit more consideration, I stuck with my original design after realizing the key insight: what happens in the execution of the current batch affects what happens in the next batch. For example, if continuous batching was implemented and the scheduling rule was to have at least 4 requests in the batch while not swapping out any requests that are actively decoding, you would need to know if any requests finished in the previous execution when scheduling the new batch.</p>
+<h2 id="step-2"><a href="https://github.com/julian-reed/Jinfer/tree/cd0522b466e30b5201ac279169e3832b5017f6bb">Step 2: KV Caching</a></h2>
+<p>When benchmarking my code from step 1, I saw the <code>O(S<sup>2</sup>d)</code> scaling firsthand: for long responses, the time between tokens would grow by a factor of 0.01 seconds, then 0.1, then 1, and beyond. Fixing this was priority number one, so I made the most important optimization in all of inference: implementing a KV cache.</p>
+<p>The first step of this implementation was creating a KV Manager class, which would handle all cache-related functionality. I was inspired by vLLM’s KV Manager as introduced in <a href="https://www.aleksagordic.com/blog/vllm">Inside vLLM: Anatomy of a High-Throughput LLM Inference System</a>, which added nice extensibility later on (even though for this step, the manager really only handled initialization).</p>
+<p>If you take a look at the code, you might notice that I feel victim to violating my minimal solution design principle by adding the notion of cache blocks. At the time, it seemed like a great idea: why not build in flexibility for the future? Instead, it added a ton of invariants to this step, and wasn’t sufficiently expressive once I learned how the design is actually supposed to work in step 4.</p>
+<p>This step adds a warmup pass when benchmarking is enabled. This is because allocating the massive cache adds a lot of overhead to the startup time which skews TTFT. The size of the pre-allocated cache here was the first instance of a bottleneck mentioned in the papers I had read (specifically the restriction described in PagedAttention that you must have a cache that supports the max sequence length, thus resulting in a [<code>num_hidden_layers,2 (k and v),batch_size,num_kv_heads,max_seq_len,head_dim</code>] tensor with massive internal fragmentation), which was very gratifying to derive myself.</p>
+<p>Some other small mistakes I made:</p>
+<ul>
+<li>Incrementing cache length under the assumption that the cache gets longer after every token, but not special-casing prefill (since you would be increase the cache length by the number of input tokens)</li>
+</ul>
+<ul>
+<li>Keeping the original RoPE implementation that generated positions using arange(seq_len), when you need to pass the actual position to utilize the cache</li>
+</ul>
+<h2 id="step-3"><a href="https://github.com/julian-reed/Jinfer/tree/17cb7dc478a7c36a3be521d482574245a8545bbf">Step 3: Static Batching</a></h2>
+<p>With the cache implemented and improvements to ITL, my focus shifted to increasing throughput, with batching being the natural solution. Again to build the simple thing first, I started with static batching before implementing continuous batching (which I eventually implemented alongside PagedAttention, so another win for the simple approach or else this would’ve been a monumental diff).</p>
+<p>However, my earlier failure to build the simple thing first meant that my batching implementation began with rewriting a lot of code. Most prominently, I moved batch management from the worker to the engine. Previously, the engine would call worker.remove anytime it wanted to remove a request from the batch, and worker.set every time it wanted to add to the batch. I modified this by calling worker.set_batch() each iteration, and keeping the engine in control of all batch management (thus maintaining its original responsibility of scheduling).</p>
+<p>My first mistake was with padding: without much thought, I followed convention from other systems tasks I’ve worked on and padded the right side of each request. I finished my masking implementation and got all the way to sampling the logits before I realized they would all be out of order, and I would have to do a bunch of slicing again to get the valid last logit for each token. At this point, I made the (somewhat painful to my ego) decision to switch to left padding to make sampling easier and considering the future complications that would arise with continuous batching.</p>
+<p>Unsurprisingly, masking proved the most difficult task - specifically ensuring that padded tokens were masked along the batch size dimension since each request had a different amount of padding, the casual mask, plus different behavior for prefill and decode. Getting everything correct required a lot of time in the REPL understanding broadcasting mechanics and working through toy examples on pen and paper, but the feeling of gratification at the end was well worth it. A particularly tricky issue I had here was that since some of the queries were padded, entire rows of the score matrix would be masked out, causing NaNs in the softmax. To resolve this, I allowed even padded queries to attend to valid keys, then applied a second mask after softmax to send the padded queries to zero.</p>
+<p>I mentioned in the previous step that the size of the preallocated cache was problematic, and it was even more so at this step, since the batch_size dimension was greater than one. To make sure I could actually run the code without hitting OOM, I had to apply my own limit to the max sequence length (approximately such that <code>JR_SEQUENCE_LIMIT * Batch size = max_seq_len * previous_batch_size</code>), where <code>previous_batch_size</code> was one since batching wasn’t yet implemented.</p>
+<p>In order to get the right subsection of the cache, I used <code>index_select</code>. While this was correct functionally, it actually copies all data from the existing tensor into a new one, which is quite expensive, both from an efficiency perspective (slowed down average ITL by 25%) and using 16404.2 MiB of memory (reserved). I could’ve resolved this hit by compressing the cache and changing the block number associated, but I decided just to move on to the next step since everything would have been rewritten shortly after anyway.</p>
+<h2 id="step-4"><a href="https://github.com/julian-reed/Jinfer/tree/866b11e8059ce03f179f2cf3578b5e013ce02251">Step 4: Continuous Batching + PagedAttention</a></h2>
+<p>As was clear from the many memory-related issues I hit with static batching, PagedAttention beckoned the next step. However, PagedAttention with static batching is a bit awkward: you want the engine/kv cache manager to handle the cache allocation specifically, but with static batching the worker would need to handle this (since you just pass the batch from engine to worker and worker manages it until completion, while with continuous batching you return control to the engine after each step). Of course I could have rewritten that interplay, but it seemed cleaner to just make the wholesale improvement. Furthermore, most of the continuous batching complexity comes from managing the metadata passed into the attention layer (sequence lengths, cache lengths, cache blocks, etc.), and this dataflow is largely simplified with the addition of PagedAttention. Therefore, I decided to implement the two together in this step.</p>
+<p>The first implementation question I ran into was whether to pad inputs or skip batching in the attention phase (as proposed in <a href="https://www.usenix.org/conference/osdi22/presentation/yu">ORCA</a> under the name “selective batching”). Obviously, it is hard to have a high performance engine if you don’t batch the attention layer (although since Llama 3 uses GQA, attention layers only make up ~20% of total parameters), so I decided to keep batching this phase and note it as an area that can be greatly accelerated in the future by writing custom kernels. Performance during decode is especially poor since decode is memory bound, and the tensor modifications introduce even more memory operations.</p>
+<p>One small optimization I made to reduce the slowdown described above was flattening the batch dimension (<code>x.shape</code> goes from [<code>B,S,D</code>] to [<code>A,D</code>], where A is the sum of all sequence lengths in the batch, aka the total number of tokens in the batch). The input goes through Q,K,V projections and RoPE in this flattened form, then split into separate prefill and decode batches for masking and score calculation before being merged for the output projection. This cuts out some of the padding done previously (instead of padding all requests to the length of the longest prefill, just pad prefills to the longest prefill length and pad decodes to the largest number of cache blocks), at the cost of a more complicated implementation.</p>
+<p>On the PagedAttention side, my biggest design question was where to do the logical to physical block conversion. My original, uninformed implementation was as follows: The worker does no memory allocation upon startup, just loads the model. The KV cache manager handles creation of both logical and physical blocks. This was the part that worked while running the code on MPS (meaning shared memory), but began to break down once I thought ahead to porting the code to GPU (since the KV cache manager runs on host, but would need to allocate tensors that live on the GPU). I reasoned that, as the unit of work, the worker should be responsible for allocating memory. But, if that is the case, does the KV cache manager just become a block table manager? For inspiration, I looked to vLLM, which uses the following structure:</p>
+<ul>
+<li>On worker startup, the worker determines how much memory is available for the KV cache and allocates a large KV pool</li>
+</ul>
+<ul>
+<li>The worker reports how many physical blocks it has allocated in the above process to the KV manager, which initializes a free list containing those physical block IDs</li>
+</ul>
+<ul>
+<li>During execution, the manager pulls free blocks from the worker-provided list and updates the block table (maintained per-worker)</li>
+</ul>
+<ul>
+<li>For tensor parallel setups, the scheduler maintains one KV cache manager and one block pool for each tensor parallel group, in which the individual workers are allocated a local shard of each block</li>
+</ul>
+<p>I implemented a similar structure, but using the heuristic allocating half of available memory on each worker to the KV cache. I also reworked the one KV manager/block pool per TP group since I don’t have tensor parallelism implemented yet. Instead, I maintained independent pools for each worker, where each pool contains all necessary information to manage the KV cache on that worker (free IDs, block metadata, mappings, etc.). One benefit of this approach is that when it comes to KV aware routing, I didn’t need to track extra state since I already had a mapping of which device each part of the KV cache resides.</p>
+<p>This KV cache redesign also warranted a few smaller reconsiderations:</p>
+<ul>
+<li>Previously, I assigned a cache to a request when adding the request to the batch (in the engine, not when the batch is received by the worker). With multiple workers in the future, we don’t know which worker the request that batch might get sent to, so wait to assign the cache until we know which worker to pull the memory from (instead, map the cache to the request inside <code>execute()</code> on the worker).</li>
+</ul>
+<ul>
+<li>You must track <code>space_remaining</code> in the given block. Originally, I just tracked this metadata in physical blocks, but that would mean you would the entire block table any time you wanted to update <code>space_remaining</code>. For example, in attention you are updating the cache and thus want to decrement space remaining, but preferably you would avoid passing the entire block table to the model when all you need are the physical blocks. Also, from an intuitive side, it doesn’t make sense for physical blocks to be the abstraction that holds space remaining, since <code>space_remaining</code> is more of a logical-level concept. Therefore, I just pass the length of the cache per request to the attention layer, which can then derive how much space is remaining in the final block for each request</li>
+</ul>
+<h2 id="step-5">Step 5: Porting to GPU + Benchmarking</h2>
+<p>Coming soon:)</p>
 </div>
 </article>
+</div>
 </main>
 <footer class="site-footer shell">
 <div class="social-links" aria-label="Social links">
@@ -39,7 +171,7 @@
 <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M5.2 8.1H2.1V21h3.1V8.1ZM3.65 3A1.85 1.85 0 1 0 3.65 6.7 1.85 1.85 0 0 0 3.65 3ZM21.9 13.6c0-3.88-2.07-5.69-4.83-5.69-2.23 0-3.22 1.23-3.78 2.09V8.1h-3.1V21h3.1v-6.39c0-1.68.32-3.31 2.4-3.31 2.05 0 2.08 1.93 2.08 3.42V21h3.1v-7.4Z"/></svg>
 </a>
 <a href="https://github.com/julian-reed" aria-label="GitHub profile">
-<svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5a9.5 9.5 0 0 0-3 18.51c.48.09.65-.21.65-.46v-1.67c-2.64.58-3.2-1.12-3.2-1.12-.43-1.1-1.05-1.4-1.05-1.4-.86-.59.07-.58.07-.58.95.07 1.45.98 1.45.98.85 1.45 2.23 1.03 2.78.79.09-.62.33-1.03.6-1.27-2.11-.24-4.33-1.05-4.33-4.7 0-1.04.37-1.88.98-2.54.34.3.64.87.64 1.76v2.61c0 .25.17.55.66.46A9.5 9.5 0 0 0 12 2.5Z"/></svg>
+<svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5a9.5 9.5 0 0 0-3 18.51c.48.09.65-.21.65-.46v-1.67c-2.64.58-3.2-1.12-3.2-1.12-.43-1.1-1.05-1.4-1.05-1.4-.86-.59.07-.58.07-.58.95.07 1.45.98 1.45.98.85 1.45 2.23 1.03 2.78.79.09-.62.33-1.03.6-1.27-2.11-.24-4.33-1.05-4.33-4.7 0-1.04.37-1.88.98-2.54.34.3.64.87.64 1.76v2.61c0.25.17.55.66.46A9.5 9.5 0 0 0 12 2.5Z"/></svg>
 </a>
 </div>
 </footer>
