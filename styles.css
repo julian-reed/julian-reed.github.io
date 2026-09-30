@@ -70,6 +70,10 @@ body.modal-open { overflow:hidden; }
 .entry-title-link:hover { color:var(--accent); }
 .entry p { color:#aebed2; max-width:520px; margin:0; line-height:1.7; font-size:12.890625px; }
 .entry-meta { color:var(--muted); font-size:10.3125px; margin-top:12px; }
+.writing-page .entry-meta { display:flex; gap:2ch; text-transform:uppercase; letter-spacing:.08em; font-size:9.3125px; }
+.writing-page .entry { grid-template-columns:216px 1fr; min-height:150px; }
+.writing-page .entry-image { width:216px; height:150px; }
+.writing-page .entry-image img { object-fit:contain; }
 .entry-meta a + a { margin-left:4ch; }
 .research-page .entry { grid-template-columns:1fr; padding:24px 0; }
 .research-page .entry-year { display:none; }
@@ -113,4 +117,5 @@ body.modal-open { overflow:hidden; }
 .article-toc-main .article-source-note a { font-weight:400; }
 @media (max-width:700px) { .article { padding-top:38px; padding-bottom:58px; } .article h1 { margin:24.5px 0 30px; } .article-rule { margin:42px 0 54px; } }
 @media (max-width:700px) { .article { width:min(100% - 45px, 602px); } .article-layout { display:block; } .article-toc { position:static; padding-top:0; margin-bottom:42px; } .article-toc nav { gap:8px; } }
+@media (max-width:700px) { .writing-page .entry { grid-template-columns:1fr; } .writing-page .entry-image { width:216px; } }
 @media (max-width:700px) { .shell { width:min(100% - 45px, 1024px); } .site-header { align-items:flex-start; gap:22px; } .wordmark, .site-nav { font-size:17.1875px; } .site-nav { gap:18px; flex-wrap:wrap; justify-content:flex-end; } .home { padding-top:36px; padding-bottom:45px; } .home-copy { padding-top:38px; font-size:15.125px; } .page-intro::before { font-size:15.125px; } .home-copy p { margin-bottom:38px; } .site-footer { margin-top:20px; } .page { padding-top:36px; padding-bottom:58.5px; } .page-intro { grid-template-columns:1fr; gap:12px; padding-bottom:42px; } .intro-copy { margin-top:10px; } .entry { grid-template-columns:1fr; gap:8px; } .projects-page .entry-image { width:150px; } .projects-page .logo-image { width:75px; height:75px; } .projects-page .mamba-image { width:112.5px; height:112.5px; } .research-page .entry { grid-template-columns:1fr; gap:14px; } .research-page .entry-year { width:100%; height:180px; } }
