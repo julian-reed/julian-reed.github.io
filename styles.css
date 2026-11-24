@@ -11,10 +11,10 @@ a:focus-visible { outline:2px solid var(--ink); outline-offset:5px; }
 .site-header { display:flex; align-items:center; justify-content:space-between; padding-top:38px; }
 .wordmark { font-size:18.90625px; letter-spacing:-.04em; }
 .site-nav { display:flex; gap:34px; color:var(--muted); font-size:18.046875px; letter-spacing:-.04em; }
-.site-nav a[href="/"] { display:none; }
-.site-nav a[href="/writing.html"] { order:1; }
-.site-nav a[href="/projects.html"] { order:2; }
-.site-nav a[href="/research.html"] { order:3; }
+.site-nav a[href="./"] { display:none; }
+.site-nav a[href="./writing.html"] { order:1; }
+.site-nav a[href="./projects.html"] { order:2; }
+.site-nav a[href="./research.html"] { order:3; }
 .site-nav a:hover { color:var(--ink); }
 .home { padding-top:45.33px; padding-bottom:51px; }
 .home-image { width:100%; max-width:100%; margin:0 auto; }
@@ -28,10 +28,10 @@ a:focus-visible { outline:2px solid var(--ink); outline-offset:5px; }
 .social-links { flex-direction:row; flex-wrap:nowrap; }
 .social-links svg { width:18px; height:18px; }
 .social-links a[href^="mailto:"] svg { transform:scale(1.33); }
-.social-links a[href="https://www.linkedin.com/in/juliantreed/"] { width:18px; height:18px; background-color:currentColor; -webkit-mask:url('/linkedin_svg.svg') center / contain no-repeat; mask:url('/linkedin_svg.svg') center / contain no-repeat; }
+.social-links a[href="https://www.linkedin.com/in/juliantreed/"] { width:18px; height:18px; background-color:currentColor; -webkit-mask:url('./linkedin_svg.svg') center / contain no-repeat; mask:url('./linkedin_svg.svg') center / contain no-repeat; }
 .social-links a[href="https://www.linkedin.com/in/juliantreed/"] { -webkit-mask-size:165%; mask-size:165%; }
 .social-links a[href="https://www.linkedin.com/in/juliantreed/"] svg { display:none; }
-.social-links a[href="https://github.com/julian-reed"] { width:18px; height:18px; background-color:currentColor; -webkit-mask:url('/github%20svg.svg') center / contain no-repeat; mask:url('/github%20svg.svg') center / contain no-repeat; }
+.social-links a[href="https://github.com/julian-reed"] { width:18px; height:18px; background-color:currentColor; -webkit-mask:url('./github%20svg.svg') center / contain no-repeat; mask:url('./github%20svg.svg') center / contain no-repeat; }
 .social-links a[href="https://github.com/julian-reed"] svg { display:none; }
 .social-links a:hover { color:var(--ink); }
 .page { padding-top:45.33px; padding-bottom:58.5px; max-width:100%; }
